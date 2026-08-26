@@ -1,5 +1,6 @@
 import requests
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # ← ДОБАВИТЬ
 import os
 
 # ============================================================
@@ -12,6 +13,7 @@ ADMIN_CHAT_ID = "5215555078"
 # СОЗДАЁМ ВЕБ-СЕРВЕР
 # ============================================================
 app = Flask(__name__)
+CORS(app)  # ← РАЗРЕШАЕМ ВСЕ ЗАПРОСЫ С ЛЮБЫХ ДОМЕНОВ
 
 def send_to_telegram(name, email, message):
     """Отправляет сообщение админу в Telegram"""
@@ -37,16 +39,10 @@ def send_to_telegram(name, email, message):
     except Exception as e:
         return {"error": str(e)}
 
-# ============================================================
-# ГЛАВНАЯ СТРАНИЦА (для проверки, что бот работает)
-# ============================================================
 @app.route('/', methods=['GET'])
 def index():
-    return "🤖 Бот Quantum House для отправки сообщений работает!", 200
+    return "🤖 Бот Quantum House работает!", 200
 
-# ============================================================
-# ПРИЁМ СООБЩЕНИЙ С САЙТА (ОСНОВНАЯ ФУНКЦИЯ)
-# ============================================================
 @app.route('/send-message', methods=['POST'])
 def receive_message():
     try:
@@ -56,15 +52,13 @@ def receive_message():
         email = data.get('email', 'Не указан')
         message = data.get('message', 'Нет текста')
         
-        # Валидация
         if not name or not email or not message:
             return jsonify({
                 "success": False,
                 "error": "Заполните все поля"
             }), 400
         
-        # Отправляем админу в Telegram
-        result = send_to_telegram(name, email, message)
+        send_to_telegram(name, email, message)
         
         return jsonify({
             "success": True,
@@ -77,12 +71,7 @@ def receive_message():
             "error": str(e)
         }), 500
 
-# ============================================================
-# ЗАПУСК СЕРВЕРА
-# ============================================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Бот запущен на порту {port}")
-    print(f"📩 Сообщения будут приходить админу: {ADMIN_CHAT_ID}")
-    print(f"🔗 Эндпоинт: /send-message")
     app.run(host='0.0.0.0', port=port, debug=False)
