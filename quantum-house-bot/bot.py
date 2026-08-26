@@ -1,11 +1,12 @@
 import requests
 from flask import Flask, request, jsonify
+import os
 
 # ============================================================
 # НАСТРОЙКИ
 # ============================================================
 TOKEN = "8984050158:AAHXubXN-cpMFGqWgSI3zp4u5Cp_1ZC3RRQ"
-CHAT_ID = "5215555078"
+ADMIN_CHAT_ID = "5215555078"
 
 # ============================================================
 # СОЗДАЁМ ВЕБ-СЕРВЕР
@@ -13,7 +14,7 @@ CHAT_ID = "5215555078"
 app = Flask(__name__)
 
 def send_to_telegram(name, email, message):
-    """Отправляет сообщение в Telegram"""
+    """Отправляет сообщение админу в Telegram"""
     text = f"""
 📩 <b>Новое сообщение с сайта!</b>
 
@@ -25,26 +26,26 @@ def send_to_telegram(name, email, message):
     
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     data = {
-        "chat_id": CHAT_ID,
+        "chat_id": ADMIN_CHAT_ID,
         "text": text,
         "parse_mode": "HTML"
     }
     
     try:
-        response = requests.post(url, json=data)
+        response = requests.post(url, json=data, timeout=10)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 # ============================================================
-# ГЛАВНАЯ СТРАНИЦА (чтобы не было ошибки 404)
+# ГЛАВНАЯ СТРАНИЦА (для проверки, что бот работает)
 # ============================================================
 @app.route('/', methods=['GET'])
 def index():
-    return "🤖 Бот Quantum House работает!", 200
+    return "🤖 Бот Quantum House для отправки сообщений работает!", 200
 
 # ============================================================
-# ПРИЁМ СООБЩЕНИЙ С САЙТА
+# ПРИЁМ СООБЩЕНИЙ С САЙТА (ОСНОВНАЯ ФУНКЦИЯ)
 # ============================================================
 @app.route('/send-message', methods=['POST'])
 def receive_message():
@@ -55,13 +56,19 @@ def receive_message():
         email = data.get('email', 'Не указан')
         message = data.get('message', 'Нет текста')
         
-        # Отправляем в Telegram
+        # Валидация
+        if not name or not email or not message:
+            return jsonify({
+                "success": False,
+                "error": "Заполните все поля"
+            }), 400
+        
+        # Отправляем админу в Telegram
         result = send_to_telegram(name, email, message)
         
         return jsonify({
             "success": True,
-            "message": "Сообщение отправлено в Telegram",
-            "telegram_response": result
+            "message": "Сообщение отправлено админу"
         })
         
     except Exception as e:
@@ -74,8 +81,8 @@ def receive_message():
 # ЗАПУСК СЕРВЕРА
 # ============================================================
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get("PORT", 5000))
-    print("🚀 Бот запущен на порту", port)
-    print(f"📩 Сообщения будут приходить в чат {CHAT_ID}")
+    print(f"🚀 Бот запущен на порту {port}")
+    print(f"📩 Сообщения будут приходить админу: {ADMIN_CHAT_ID}")
+    print(f"🔗 Эндпоинт: /send-message")
     app.run(host='0.0.0.0', port=port, debug=False)
